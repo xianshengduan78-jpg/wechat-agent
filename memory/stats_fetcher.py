@@ -10,7 +10,10 @@ from typing import Optional
 
 import requests
 
-from config.settings import DATA_DIR, DATACUBE_URL
+from config.settings import (
+    DATA_DIR, DATACUBE_URL, DATACUBE_GETARTICLESUM_URL,
+    FREEPUBLISH_BATCHGET_URL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,17 +48,52 @@ def fetch_article_total(access_token: str, article_id: str) -> Optional[dict]:
 
 
 def fetch_recent_articles(access_token: str, days: int = 7) -> list:
-    """拉取最近 N 天已发布文章列表（通过草稿/发布接口）。
+    """通过 getarticlesummary 获取最近文章数据（按日期范围）。
 
-    注意：微信 datacube getarticletotal 需要 article_id，
-    这里需要先从发布列表获取 article_id。
+    注意：此 API 仅对认证服务号/认证订阅号开放。
+    个人订阅号调用会返回 48001（无权限）。
     """
-    # 微信 datacube 接口不直接返回文章列表
-    # 需要先通过素材管理接口获取已发布文章
-    # 此功能依赖微信"发布能力"接口
-    logger.info("拉取最近 %d 天文章数据...", days)
-    # 实际使用时需要结合 getarticle 接口
-    return []
+    logger.info("通过 getarticlesummary 拉取文章数据...")
+    articles = []
+    today = datetime.now(timezone.utc)
+
+    try:
+        resp = requests.post(
+            DATACUBE_GETARTICLESUM_URL,
+            params={"access_token": access_token},
+            json={
+                "begin_date": (today - timedelta(days=days)).strftime("%Y-%m-%d"),
+                "end_date": today.strftime("%Y-%m-%d"),
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        if "list" in data:
+            seen_titles = set()
+            for item in data["list"]:
+                title = item.get("title", "")
+                if title and title not in seen_titles:
+                    seen_titles.add(title)
+                    articles.append({
+                        "title": title,
+                        "article_id": item.get("articleid", item.get("ref_date", "")),
+                        "ref_date": item.get("ref_date", ""),
+                    })
+            logger.info("getarticlesummary 获取到 %d 篇文章", len(articles))
+        else:
+            errcode = data.get("errcode")
+            if errcode == 48001:
+                logger.warning("数据统计 API 无权限（需要认证订阅号/服务号），当前账号可能为个人订阅号")
+            else:
+                logger.warning("getarticlesummary 返回异常: %s", data)
+
+        return articles
+
+    except Exception as e:
+        logger.warning("getarticlesummary 调用失败: %s", e)
+        return []
 
 
 def save_performance(performance: dict) -> None:

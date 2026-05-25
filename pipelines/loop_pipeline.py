@@ -60,24 +60,34 @@ def run_loop():
 
 
 def _try_fetch_with_token() -> dict:
-    """尝试用微信 API 拉取数据。"""
+    """用微信 API 拉取已发布文章的表现数据。"""
     try:
         from publishing.wechat_api import WeChatClient
         wechat = WeChatClient()
         token = wechat.get_access_token()
         if not token:
             return {}
+
         from memory.stats_fetcher import fetch_recent_articles, fetch_article_total
         articles = fetch_recent_articles(token, days=7)
         if not articles:
+            logger.info("没有找到已发布文章数据")
             return {}
+
         total = {}
         for article in articles:
             aid = article.get("article_id")
             if aid:
                 stats = fetch_article_total(token, aid)
                 if stats:
-                    total.update(stats)
+                    total[article.get("title", aid)] = stats
+                    for title, s in stats.items():
+                        logger.info("  %s: 阅读 %d | 分享 %d | 收藏 %d",
+                                    title[:30], s.get("reads", 0), s.get("shares", 0), s.get("collects", 0))
+
+        if not total:
+            logger.info("getarticlesummary 返回了文章列表，但 getarticletotal 未获取到详情（可能需要发布超过 24h 才有数据）")
+
         return total
     except Exception as e:
         logger.warning("微信 API 数据拉取失败: %s", e)
