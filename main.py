@@ -25,9 +25,39 @@ def cmd_test():
 
 
 def cmd_daily(dry_run=False):
-    """运行日报 pipeline（后续 Phase 实现）。"""
-    print("📋 日报功能待实现（Phase 3）。")
-    print(f"   dry_run={dry_run}")
+    """运行日报 pipeline。"""
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    from sources.pool_manager import refresh_pool
+    from selection.selector import select, write_selection_report
+
+    print("📋 刷新候选池...")
+    pool = refresh_pool()
+
+    print(f"📋 候选池: {len(pool)} 条事件")
+    result = select(pool)
+    report_path = write_selection_report(result)
+
+    print(f"\n📋 选择结果:")
+    print(f"   候选池: {result['pool_count']} 条")
+    print(f"   过滤后: {result['filtered_count']} 条")
+    print(f"   去重后: {result['deduped_count']} 条")
+    print(f"   最终入选: {result['final_count']} 条\n")
+
+    for i, e in enumerate(result["selected_events"], 1):
+        print(f"  {i}. [{e.get('total_score', 0):5.1f}] {e.get('title', '')}")
+        print(f"      来源: {e.get('source_name', '')} | 眼球: {e.get('eye_score', 0)}")
+        print()
+
+    if result["excluded_events"]:
+        print(f"排除 {len(result['excluded_events'])} 条:")
+        for title, reason in result["excluded_events"][:10]:
+            print(f"  - {title}: {reason}")
+        if len(result["excluded_events"]) > 10:
+            print(f"  ... 还有 {len(result['excluded_events']) - 10} 条")
+
+    print(f"选题报告: {report_path}")
 
 
 def cmd_article(topic=None, dry_run=False):
