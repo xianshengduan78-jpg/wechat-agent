@@ -63,8 +63,18 @@ def cmd_article(topic=None, dry_run=False):
 
 
 def cmd_loop():
-    """运行数据闭环（后续 Phase 实现）。"""
-    print("🔄 数据闭环功能待实现（Phase 5）。")
+    """运行数据闭环。"""
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    from pipelines.loop_pipeline import run_loop
+    result = run_loop()
+
+    if result:
+        print(f"\n🔄 数据闭环完成")
+        print(f"   报告: {result.get('report', '')}")
+        if result.get("strategy_after"):
+            print(f"   高表现类型: {result['strategy_after'].get('high_perf_types')}")
 
 
 def main():

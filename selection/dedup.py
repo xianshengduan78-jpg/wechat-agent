@@ -3,16 +3,13 @@
 URL 去重 + 标题相似度去重（字符 bigram Jaccard）。
 """
 
-import json
 import logging
-from pathlib import Path
-from typing import List, Set
+from typing import Set
 
-from config.settings import DATA_DIR, DEDUP_SIMILARITY_THRESHOLD
+from config.settings import DEDUP_SIMILARITY_THRESHOLD
+from memory.event_history import get_titles
 
 logger = logging.getLogger(__name__)
-
-HISTORY_FILE = DATA_DIR / "daily-event-history.json"
 
 
 def deduplicate(events: list) -> list:
@@ -41,7 +38,7 @@ def deduplicate(events: list) -> list:
             title_deduped.append(e)
 
     # 3. 对比历史
-    history_titles = _load_history_titles()
+    history_titles = get_titles()
     final = []
     for e in title_deduped:
         if not _has_duplicate_title(e.get("title", ""), history_titles, as_list=True):
@@ -57,7 +54,6 @@ def _normalize_url(url: str) -> str:
     if not url:
         return ""
     url = url.strip().rstrip("/")
-    # 去掉常见 tracking 参数
     import re
     url = re.sub(r"\?utm_.*$", "", url)
     url = re.sub(r"\?ref=.*$", "", url)
@@ -97,43 +93,3 @@ def _has_duplicate_title(title: str, existing: list, as_list: bool = False) -> b
         if sim >= DEDUP_SIMILARITY_THRESHOLD:
             return True
     return False
-
-
-def _load_history_titles() -> List[str]:
-    """从历史文件中加载已发事件标题。"""
-    if not HISTORY_FILE.exists():
-        return []
-    try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, list):
-            return [e.get("title", "") for e in data if isinstance(e, dict)]
-        return []
-    except (json.JSONDecodeError, OSError):
-        return []
-
-
-def append_history(new_events: list) -> None:
-    """将新发布的事件追加到历史文件。"""
-    HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    history = _load_history_titles()
-    # 也用 dict 格式存
-    full_history = []
-    if HISTORY_FILE.exists():
-        try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                full_history = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            full_history = []
-
-    if not isinstance(full_history, list):
-        full_history = []
-
-    for e in new_events:
-        full_history.append(e)
-
-    try:
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(full_history, f, ensure_ascii=False, indent=2)
-    except OSError as e:
-        logger.warning("历史文件写入失败: %s", e)

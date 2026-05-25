@@ -143,9 +143,9 @@ def run_daily(dry_run=False):
         logger.error("草稿创建失败")
 
     # Step 11: 记录历史
-    from selection.dedup import append_history
+    from memory.event_history import append
     logger.info("Step 11/11: 记录历史")
-    append_history(selected_events)
+    append(selected_events)
     logger.info("历史已更新")
 
     return {
