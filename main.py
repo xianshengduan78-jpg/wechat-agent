@@ -63,18 +63,8 @@ def cmd_article(topic=None, dry_run=False):
 
 
 def cmd_loop():
-    """运行数据闭环。"""
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-
-    from pipelines.loop_pipeline import run_loop
-    result = run_loop()
-
-    if result:
-        print(f"\n🔄 数据闭环完成")
-        print(f"   报告: {result.get('report', '')}")
-        if result.get("strategy_after"):
-            print(f"   高表现类型: {result['strategy_after'].get('high_perf_types')}")
+    print("🔄 数据闭环已移除（微信 API 需要认证订阅号/服务号）")
+    print("   手动编辑 data/strategy-memory.json 即可调整策略")
 
 
 def main():

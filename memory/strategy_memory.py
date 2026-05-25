@@ -1,13 +1,12 @@
 """策略记忆模块。
 
 记录选题偏好、标题策略、封面策略、写作备注。
-数据驱动更新：根据历史表现调整后续策略。
+手动编辑 data/strategy-memory.json 即可调整。
 """
 
 import json
 import logging
 from copy import deepcopy
-from typing import Optional
 
 from config.settings import DATA_DIR
 
@@ -22,8 +21,6 @@ DEFAULT_STRATEGY = {
     "title_strategy": "信息型为主，反差型为辅",
     "cover_strategy": "用最有代表性的事件截图 + 短钩子主标题",
     "writing_notes": "",
-    "title_type_performance": {},
-    "event_type_performance": {},
 }
 
 
@@ -34,7 +31,6 @@ def load() -> dict:
     try:
         with open(STRATEGY_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-        # 合入默认值（防止新增字段缺失）
         merged = deepcopy(DEFAULT_STRATEGY)
         merged.update(data)
         return merged
@@ -52,37 +48,3 @@ def save(strategy: dict) -> None:
         logger.info("策略记忆已保存")
     except OSError as e:
         logger.warning("策略记忆写入失败: %s", e)
-
-
-def update_from_performance(performance: dict) -> dict:
-    """根据表现数据更新策略记忆。
-
-    Args:
-        performance: {event_type: {impressions, reads, shares, likes, ...}}
-
-    Returns:
-        更新后的策略记忆
-    """
-    strategy = load()
-
-    if not performance:
-        return strategy
-
-    # 按事件类型分组分析阅读表现
-    type_perf = {}
-    for etype, stats in performance.items():
-        read_rate = stats.get("read_rate", 0)
-        type_perf[etype] = read_rate
-
-    strategy["event_type_performance"] = type_perf
-
-    # 找出高/低表现类型
-    if type_perf:
-        sorted_types = sorted(type_perf.items(), key=lambda x: x[1], reverse=True)
-        mid = len(sorted_types) // 2
-        strategy["high_perf_types"] = [t for t, _ in sorted_types[:mid]]
-        strategy["low_perf_types"] = [t for t, _ in sorted_types[mid:]]
-
-    save(strategy)
-    logger.info("策略已根据表现数据更新")
-    return strategy
