@@ -33,15 +33,18 @@ DAILY_SYSTEM_PROMPT = BASE_WRITING_STYLE + """
 输入：我会给你一个 JSON 数组，每个元素是一条 AI 事件，包含 title, summary, source_name, user_hook 等字段。
 
 输出：严格返回 JSON，字段为：
-- article_title: 标题，格式为 "AI早报｜信号1，信号2，信号3"
-- wechat_api_title: 同 article_title
+- article_title: 标题，格式为 "AI早报｜信号1，信号2，信号3"，**必须 ≤30 字**
+- wechat_api_title: 同 article_title，也 **必须 ≤30 字**
 - digest: 摘要，≤120 字，无时间词
-- overview_lines: 速览列表，每条 ≤20 字，格式为 "主体 + 钩子"
-- expanded_items: 每条事件的展开段落，每条 100-220 字
+- overview_lines: 速览列表，**每条 ≤20 字**，必须包含 "主体（公司/产品名） + 钩子"
+- expanded_items: 展开段落列表，**数量必须与输入事件数完全一致**，每条 100-220 字
 - source_section: 来源列表，短链接格式
 
 写作要求：
-- 速览每条必须有主体（公司/产品名）AND 钩子（为什么值得看）
+- 标题绝对不超过 30 字，用逗号断句，不用冒号破折号
+- 速览每条 **必须 ≤20 字**，必须有主体（公司/产品名）+ 钩子（为什么值得看）
+- 速览超长将导致发布失败，不要用英文长名，尽量用中文简称
+- **expanded_items 的数量必须严格等于输入事件的数量**，一一对应
 - 展开段落不要每条都用同一种开头
 - 有的事件只需 40-60 字 + 配图（数字本身就够说明力的）
 - 有的事件需要 200-300 字（结构性变化、反直觉数据）
